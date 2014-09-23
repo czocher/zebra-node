@@ -1,0 +1,11 @@
+
+module pascal_policy 1.0;
+
+require {
+	type lib_t;
+	type sandbox_t;
+	class file execute_no_trans;
+}
+
+#============= sandbox_t ==============
+dontaudit sandbox_t lib_t:file execute_no_trans;
