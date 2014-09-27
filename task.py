@@ -1,149 +1,148 @@
 #! /usr/bin/env python
 #-*- coding: utf8 -*-
 from test import Test
-from settings import TASK_BACKEND, TEST_BACKEND, SUPERVISOR_HOST, NODE_KEY, NODE_NAME, \
-    REST_URL_PREFIX
+from settings import NODE
 from rest import RESTConnection
-from StringIO import StringIO
-from httplib import HTTPException
-from time import time
 import os
-import xml.dom.minidom
 import tarfile
 import logging
+import xmltodict
 
 
 class Task(object):
-    """Class represents single task. It is define by tid and contains test for task, limit of execution time and memory limit"""
-    def __init__(self, tid):
-        self.connection = RESTConnection(SUPERVISOR_HOST, NODE_NAME, NODE_KEY)
-        self.tid = tid
-        self.tests = {}
-        self.timeStamp = [0, 0, 0]
-        self.lastUseTime = time()
-        self.getTask()
+    """Represents single task. It is defined by a problem id and
+    manages tests for that problem."""
 
-    def __downloadTests(self, timeStamp):
-        """Download all tests for this particular task"""
-        if TEST_BACKEND == "file":
-            for dummy, dummy, files in os.walk("tests/in/" + str(self.tid) + "/"):
-                for fil in files:
-                    with open("tests/in/" + str(self.tid) + "/" + fil) as fileIn, open("tests/ref/" + str(self.tid) + "/" + fil) as fileRef:
-                        tIn = fileIn.read()
-                        tRef = fileRef.read()
-                        tmp = Test(tIn, tRef)
-                        self.tests.append(tmp)
-        elif TEST_BACKEND == "http":
-            testIn = None
-            testOut = None
-            testConf = None
-            try:
-                self.connection.GET(REST_URL_PREFIX + "problem/" + str(self.tid) + "/tests/")
-                dom = xml.dom.minidom.parseString(self.connection.response)
-                if (timeStamp[0] != self.timeStamp[0]):
-                    self.connection.GET(dom.getElementsByTagName("in")[0].childNodes[0].data, notXML=True)
-                    testIn = StringIO(self.connection.response)
-                if (timeStamp[1] != self.timeStamp[1]):
-                    self.connection.GET(dom.getElementsByTagName("out")[0].childNodes[0].data, notXML=True)
-                    testOut = StringIO(self.connection.response)
-                if (timeStamp[2] != self.timeStamp[2]):
-                    self.connection.GET(dom.getElementsByTagName("conf")[0].childNodes[0].data, notXML=True)
-                    testConf = StringIO(self.connection.response)
-            except HTTPException:
-                logging.error("Tests not avaliable")
-                raise
-            except IndexError:
-                logging.warn("Wrong answer from supervisor - tests")
-            try:
-                tarOut = tarfile.open(fileobj=testOut, mode="r:gz")
-                del testOut
-            except:
-                tarOut = None
-            try:
-                tarIn = tarfile.open(fileobj=testIn, mode="r:gz")
-                del testIn
-            except:
-                tarIn = None
-            try:
-                tarConf = tarfile.open(fileobj=testConf, mode="r:gz")
-                del testConf
-            except:
-                tarConf = None
-            tarFor = tarIn
-            if tarIn == None:
-                if tarOut == None:
-                    tarFor = tarConf
-                else:
-                    tarFor = tarOut
-            for tarinfo in tarFor:
-                try:
-                    if tarinfo.name not in self.tests:
-                        tIn = tarIn.extractfile(tarinfo.name).read()
-                        tRef = tarOut.extractfile(tarinfo.name).read()
-                        tConf = tarConf.extractfile(tarinfo.name).read()
-                        dom = xml.dom.minidom.parseString(tConf)
-                        tmp = Test(tIn, tRef, int(dom.getElementsByTagName("memory")[0].childNodes[0].data), float(dom.getElementsByTagName("time")[0].childNodes[0].data), int(dom.getElementsByTagName("sample")[0].childNodes[0].data))
-                        del tIn
-                        del tRef
-                        del tConf
-                        self.tests[tarinfo.name] = tmp
-                    else:
-                        if tarIn != None:
-                            self.tests[tarinfo.name].input = tarIn.extractfile(tarinfo.name).read()
-                        if tarOut != None:
-                            self.tests[tarinfo.name].reference = tarOut.extractfile(tarinfo.name).read()
-                        if tarConf != None:
-                            dom = xml.dom.minidom.parseString(tarConf.extractfile(tarinfo.name).read())
-                            self.tests[tarinfo.name].memoryLimit = int(dom.getElementsByTagName("memory")[0].childNodes[0].data)
-                            self.tests[tarinfo.name].timeLimit = float(dom.getElementsByTagName("time")[0].childNodes[0].data)
-                            self.tests[tarinfo.name].sampleTest = int(dom.getElementsByTagName("sample")[0].childNodes[0].data)
-                except Exception:
-                    logging.exception("Error during test fetching.")
-                    raise
-            if tarIn != None:
-                tarIn.close()
-                del tarIn
-            if tarOut != None:
-                tarOut.close()
-                del tarOut
-            if tarConf != None:
-                tarConf.close()
-                del tarConf
-        elif TEST_BACKEND == "S3":
-            raise NotImplementedError
+    def __init__(self, pid):
+        """Load tests for the given problem id."""
+        raise NotImplementedError()
 
-    def __downloadTimeStamp(self):
-        timeStamp = []
-        if TASK_BACKEND == "file":
-            with open("tests/conf/" + str(self.tid) + "/timestampIN") as fileIN, open("tests/conf/" + str(self.tid) + "/timestampOUT") as fileOUT, open("tests/conf/" + str(self.tid) + "/timestampCONF") as fileCONF:
-                timeStamp.append(int(fileIN.read()))
-                timeStamp.append(int(fileOUT.read()))
-                timeStamp.append(int(fileCONF.read()))
-            return timeStamp
-        elif TASK_BACKEND == "supervisor":
-            try:
-                self.connection.GET(REST_URL_PREFIX + "problem/" + str(self.tid) + "/")
-            except HTTPException:
-                logging.error("Error during fetching timestamp - supervisor")
-                raise
-            dom = xml.dom.minidom.parseString(self.connection.response)
-            try:
-                timeStamp.append(int(dom.getElementsByTagName("in")[0].childNodes[0].data))
-                timeStamp.append(int(dom.getElementsByTagName("out")[0].childNodes[0].data))
-                timeStamp.append(int(dom.getElementsByTagName("conf")[0].childNodes[0].data))
-                return timeStamp
-            except IndexError:
-                logging.warn("Wrong answer from supervisor - timestamp")
-                return Exception
+    @property
+    def tests(self):
+        """Checks if the tests require updating and returns them."""
+        raise NotImplementedError()
 
-    def getTask(self):
-        """Download all necessary data if their are not up to date and return task"""
-        timeStamp = self.__downloadTimeStamp()
-        if timeStamp != self.timeStamp:
-            try:
-                self.__downloadTests(timeStamp)
-                self.timeStamp = timeStamp
-            except HTTPException:
-                raise
-        self.lastUseTime = time()
-        return self
+    def _check_updates(self):
+        """Checks if tests need realoading."""
+        raise NotImplementedError()
+
+    def _load_tests(self):
+        """Loads the tests from the given backend."""
+        raise NotImplementedError()
+
+    @staticmethod
+    def new(pid):
+        """Create a new task object according to the settings."""
+
+        if NODE['TEST_BACKEND'] == 'file':
+            return FileTask(pid)
+        elif NODE['TEST_BACKEND'] == 'rest':
+            return RESTTask(pid)
+
+
+class FileTask(Task):
+    """Task which loads tests from local filesystem files."""
+    pass
+
+
+class RESTTask(Task):
+    """Task which loads tests from the REST web service."""
+
+    def __init__(self, pid):
+        self.pid = pid
+        self._tests = {}
+        self.timestamp = [0, 0, 0]
+
+    @property
+    def tests(self):
+        self._check_updates()
+        return self._tests
+
+    @tests.setter
+    def tests(self, value):
+        self._tests = value
+
+    def _check_updates(self):
+        logging.info("Checking if tests are up-to-date.")
+        inpt_path = self.__get_test_path(NODE['TEST_PATH'], self.pid, 'in')
+        out_path = self.__get_test_path(NODE['TEST_PATH'], self.pid, 'out')
+        conf_path = self.__get_test_path(NODE['TEST_PATH'], self.pid, 'conf')
+
+        if not os.path.exists(inpt_path) or not os.path.exists(out_path) or \
+           not os.path.exists(conf_path):
+            logging.info("Tests for problem {} do not exist.".format(self.pid))
+            self._load_tests()
+        else:
+            data = RESTConnection.get_test_timestamps(self.pid)
+
+            inpt_time = int(data['in'])
+            out_time = int(data['out'])
+            conf_time = int(data['conf'])
+
+            if int(os.path.getmtime(inpt_path)) < inpt_time or \
+               int(os.path.getmtime(out_path)) < out_time or \
+               int(os.path.getmtime(conf_path)) < conf_time:
+                logging.info("Tests for problem {} outdated.".format(self.pid))
+                self._load_tests()
+            logging.info(
+                "Tests for problem {} are up-to-date.".format(self.pid)
+            )
+
+        logging.info("Tests for problem {} loaded.".format(self.pid))
+        self.__fill_tests(
+            self.__get_test_path(NODE['TEST_PATH'], self.pid, 'conf'),
+            self.__get_test_path(NODE['TEST_PATH'], self.pid, 'out'),
+            self.__get_test_path(NODE['TEST_PATH'], self.pid, 'in')
+        )
+
+    @staticmethod
+    def __get_test_path(path, pid, testType):
+        """Creates an absolute path to the test file."""
+        return os.path.join(path, pid, testType + '.tar.gz')
+
+    def _load_tests(self):
+        logging.info("Updating tests for problem {}.".format(self.pid))
+
+        inpt_path = self.__get_test_path(NODE['TEST_PATH'], self.pid, 'in')
+
+        RESTConnection.get_tests(
+            problemId=self.pid,
+            testType='in',
+            path=inpt_path
+        )
+        out_path = self.__get_test_path(NODE['TEST_PATH'], self.pid, 'out')
+        RESTConnection.get_tests(
+            problemId=self.pid,
+            testType='out',
+            path=out_path
+        )
+        conf_path = self.__get_test_path(NODE['TEST_PATH'], self.pid, 'conf')
+        RESTConnection.get_tests(
+            problemId=self.pid,
+            testType='conf',
+            path=conf_path
+        )
+
+    def __fill_tests(self, conf_path, out_path, inpt_path):
+        """Fill the tests dict with the Test objects from tar files."""
+
+        with tarfile.open(conf_path, mode='r:gz') as conf:
+            for tarinfo in conf:
+                data = conf.extractfile(tarinfo).read()
+                data = xmltodict.parse(data)
+                memory = int(data['test']['memory'])
+                time = int(data['test']['time'])
+                sample = bool(int(data['test']['sample']))
+                test = Test(memoryLimit=memory, timeLimit=time,
+                            isSampleTest=sample)
+                self._tests.update({tarinfo.name: test})
+
+        with tarfile.open(inpt_path, mode='r:gz') as inpt:
+            for tarinfo in inpt:
+                data = inpt.extractfile(tarinfo).read()
+                self._tests[tarinfo.name].input = data
+
+        with tarfile.open(out_path, mode='r:gz') as out:
+            for tarinfo in out:
+                data = out.extractfile(tarinfo).read()
+                self._tests[tarinfo.name].output = data

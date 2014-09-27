@@ -3,11 +3,15 @@
 
 
 class Result(object):
-    """Result for one test. Contain return code, is solution valid and time of execution"""
-    def __init__(self, a, b, c):
-        self.statusCode = a
-        self.result = b
-        self.time = c
+    """Result for one test. Contains the return code,
+    mark and execution time"""
+
+    def __init__(self, returncode, mark, time):
+        self.returncode = returncode
+        self.mark = mark
+        self.time = time
 
     def __repr__(self):
-        return str(self.statusCode) + " " + str(self.result) + " " + str(self.time)
+        return "Result(returncode={}, mark={}, time={})".format(
+            self.returncode, self.mark, self.time
+        )

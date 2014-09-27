@@ -1,53 +1,49 @@
 #! /usr/bin/env python
 #-*- coding: utf8 -*-
 
-import threading
-import os
-import logging
-from subprocess import check_call, Popen, PIPE
-from settings import LANGS, SANDBOX_HOME_DIR, SANDBOX_TMP_DIR, sandboxCommand
-from result import Result
 from math import ceil
-import codecs
+from settings import LANGUAGES, NODE
+from sandbox import Sandbox
+from result import Result
+import threading
+import logging
 
 
 class Judge(threading.Thread):
-    """Class with compile, execute and check solutions for specific tasks"""
-    def __init__(self, sourceCode, language, task, sampleTests):
+    """Compiles, executes and checks solutions for a specific task."""
+
+    def __init__(self, task, submission):
         self.task = task
-        self.lang = language
-        if callable(LANGS[self.lang].fileName):
-            try:
-                fileName = LANGS[self.lang].fileName(sourceCode)
-            except:
-                raise ValueError
+        self.language = submission['language']
+        if callable(LANGUAGES[self.language].fileName):
+            fileName = LANGUAGES[self.language].fileName(submission['source'])
         else:
-            fileName = LANGS[self.lang].fileName
-        tmp = fileName.split('.')
+            fileName = LANGUAGES[self.language].fileName
         self.fileFullName = fileName
-        self.fileName = tmp[0]
-        self.fileExtention = tmp[1]
+        self.fileName, self.fileExtension = fileName.split('.')
         self.results = []
         self.log = None
-        self.sourceCode = sourceCode
-        self.sampleTests = sampleTests
+        self.source = submission['source']
+
+        # If the submission was sent in an active contest
+        # judge sample tests only
+        self.sampleTests = bool(int(submission['active']))
         threading.Thread.__init__(self)
 
     def run(self):
-        """Processing judge request - create sandbox, compile, execute and check answers"""
-        self.__createSandbox()
-        try:
-            self.compile()
-            self.execute()
-        except RuntimeError:
-            pass
-        except Exception:
-            logging.exception("Unexpected error during judging: ")
-        finally:
-            self.__deleteSandbox()
+        """Process the judge request - create the sandbox,
+        compile the source, execute and generate results."""
 
-    def compareFiles(self, out, ref=None):
-        """Basic compare function. It basically compare output file with reference file """
+        with Sandbox.new() as sandbox:
+            with sandbox.file(self.fileFullName) as sourceFile:
+                sourceFile.write(self.source)
+            self.compile(sandbox)
+            self.execute(sandbox)
+
+    def compare_files(self, out, ref=None):
+        """Basic comparation function.
+        Compares output file with reference file."""
+
         out = out.rstrip()
         ref = ref.rstrip()
         out = out.split('\n')
@@ -59,95 +55,67 @@ class Judge(threading.Thread):
                 return False
         return True
 
-    def checkSolution(self, out, ref=None, fun=compareFiles):
+    def check_solution(self, out, ref=None, fun=compare_files):
         """Compare solution with chosen function."""
         return fun(self, out, ref)
 
-    def compile(self):
+    def compile(self, sandbox):
         """Compile source code and save compile logs"""
-        with open(SANDBOX_HOME_DIR + "/compile.log", "w") as cLog:
-            try:
-                check_call(sandboxCommand + ' ' + LANGS[self.lang].compiler
-                           + ' ' + LANGS[self.lang].compilerArg + ' '
-                           + self.fileName + '.' + self.fileExtention,
-                           stderr=cLog, stdout=cLog, shell=True)
-            except KeyError:
-                logging.error("Unknown language %s", self.lang)
-                raise RuntimeError
-            except:
-                logging.info("Compilation error")
-                raise RuntimeError
-            finally:
-                with open(SANDBOX_HOME_DIR + "/compile.log") as cLog:
-                    self.log = cLog.read()
+        cmd = '{compiler} {compilerArgs} {fileName}.{fileExtension}'.format(
+            compiler=LANGUAGES[self.language].compiler,
+            compilerArgs=LANGUAGES[self.language].compilerArgs,
+            fileName=self.fileName,
+            fileExtension=self.fileExtension
+        )
 
-    def execute(self):
-        """Run program with all tests available for specific task and compare using checkSolution
-        Program is limited by execution time and memory also specific for any task"""
-        executionPath = LANGS[self.lang].execution
-        executionPath = executionPath.replace('FILENAME', self.fileName)
-        executionPath = executionPath.replace('FILEXTENTION', self.fileExtention)
+        ret = sandbox.execute(
+            cmd,
+            None,
+            timeLimit=NODE['SANDBOX']['COMPILER_TIMELIMIT']
+        )
 
-        timeCommand = '/usr/bin/time -o time.log -f %U'
+        self.log = '{} {}'.format(*ret[0])
+
+    def execute(self, sandbox):
+        """Run program with all tests available for specific task
+        and compare using check_solution. Program is limited by execution time
+        and memory depending od information taken from the task."""
+        executionPath = LANGUAGES[self.language].execution.format(
+            fileName=self.fileName,
+            fileExtension=self.fileExtension
+        )
 
         for test in self.task.tests.itervalues():
-
-            if test.sampleTest == False and self.sampleTests == 1:
+            if not test.isSampleTest and self.sampleTests:
                 continue
 
-            ulimitCommand = 'ulimit -t ' + str(int(ceil(test.timeLimit))) + \
-                        ' -v ' + str(test.memoryLimit) + ';'
+            (out, err), returncode, runTime = sandbox.execute(
+                executionPath,
+                test.input,
+                timeLimit=int(ceil(test.timeLimit)),
+                memoryLimit=test.memoryLimit
+            )
 
-            proc = Popen(ulimitCommand + sandboxCommand + \
-                         ' ' + timeCommand + ' ' + executionPath, \
-                         stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
-            dataOut = proc.communicate(input=test.input)[0]
-            proc.wait()
+            if not returncode == 0:
+                runTime = 0
 
-            if proc.returncode == 0:
-                with open(SANDBOX_HOME_DIR + "/time.log", "r") as fTime:
-                    timeOfExecution = float(fTime.read().rstrip("\n"))
-            else:
-                timeOfExecution = 0
-            if timeOfExecution > test.timeLimit:
-                proc.returncode = 9
-            res = Result(proc.returncode,
-                         self.checkSolution(dataOut, test.reference) and timeOfExecution < test.timeLimit, timeOfExecution)
-            del dataOut
+            if runTime > test.timeLimit:
+                returncode = 9
+
+            res = Result(
+                returncode,
+                int(self.check_solution(out, test.output) and returncode != 9),
+                runTime)
+            del out
             self.results.append(res)
 
-    def getResults(self):
+    def get_results(self):
         """Return compiler logs and results"""
-        if self.log == None and len(self.results) == 0:
+        if len(self.results) == 0:
             return None
-        return [self.log, self.results]
+        return self.results
 
-    def __deleteDir(self, dirName):
-        try:
-            for root, dirs, files in os.walk(dirName, topdown=False):
-                for name in files:
-                    os.remove(os.path.join(root, name))
-                for name in dirs:
-                    os.rmdir(os.path.join(root, name))
-            os.rmdir(dirName)
-        except OSError:
-            pass
-
-    def __createSandbox(self):
-        """Create directories for sandbox purposes (home dir and tmp dir).
-        Folders names are specified on settings file"""
-        self.__deleteSandbox()
-        try:
-            os.mkdir(SANDBOX_HOME_DIR)
-            os.mkdir(SANDBOX_TMP_DIR)
-        except OSError:
-            logging.error("Error while creating sandbox directory")
-            raise
-        with codecs.open(SANDBOX_HOME_DIR + "/" + self.fileFullName, 'w', "utf-8") as source:
-            source.write(self.sourceCode)
-
-    def __deleteSandbox(self):
-        """Remove all files in sandbox directories. After delete sandbox directories.
-        Folder names are specified on settings file"""
-        self.__deleteDir(SANDBOX_HOME_DIR)
-        self.__deleteDir(SANDBOX_TMP_DIR)
+    def get_compilation_log(self):
+        if not self.log:
+            return None
+        return self.log

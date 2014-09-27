@@ -1,12 +1,18 @@
-#! /usr/bin/env python
 #-*- coding: utf8 -*-
 
 
 class Test(object):
-    """Class represents input and reference output for single test"""
-    def __init__(self, input, reference, memoryLimit, timeLimit, sampleTest):
-        self.input = input
-        self.reference = reference
-        self.memoryLimit = memoryLimit
-        self.timeLimit = timeLimit
-        self.sampleTest = sampleTest
+    """Class represents an input and reference output for a single test."""
+
+    def __init__(self, *args, **kwargs):
+        self.input = kwargs.get('input')
+        self.output = kwargs.get('output')
+        self.memoryLimit = kwargs.get('memoryLimit')
+        self.timeLimit = kwargs.get('timeLimit')
+        self.isSampleTest = kwargs.get('isSampleTest')
+
+    def __repr__(self):
+        out = "Test(input={}, output={}, memoryLimit={}, " \
+                + "timeLimit={}, isSampleTest={})"
+        return out.format(self.input.strip(), self.output.strip(),
+                          self.memoryLimit, self.timeLimit, self.isSampleTest)
