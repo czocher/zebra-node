@@ -39,6 +39,7 @@ class RESTConnection(object):
 
     @classmethod
     def __get(cls, url):
+        """Perform a GET request on the given URL."""
         try:
             return requests.get(SUPERVISOR['HOST'] + url, verify=True)
         except ConnectionError as e:
@@ -47,6 +48,7 @@ class RESTConnection(object):
 
     @classmethod
     def __post(cls, url, *args, **kwargs):
+        """Perform a POST request on the given URL."""
         try:
             return requests.post(SUPERVISOR['HOST'] + url, verify=True,
                                  *args, **kwargs)
