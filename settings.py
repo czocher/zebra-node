@@ -60,8 +60,6 @@ NODE = {
 
 # Supervisor configuration
 SUPERVISOR = {
-    # The address of the Supervisor
-    'HOST': 'localhost:8000',
-    # The prefix of the REST webservice if any
-    'REST_URL_PREFIX': '/rest/',
+    # The address of the Supervisor rest webservice
+    'HOST': 'http://localhost:8000/rest/',
 }

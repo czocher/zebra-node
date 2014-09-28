@@ -4,14 +4,16 @@
 from settings import SUPERVISOR, NODE, LANGUAGES
 from utils import get_free_memory, get_free_diskspace, get_processor_frequency
 
-from httplib import HTTPConnection, HTTPException, UNAUTHORIZED, NOT_FOUND, \
-    BAD_REQUEST, OK, CONFLICT
+from httplib import UNAUTHORIZED, NOT_FOUND, BAD_REQUEST, OK, CONFLICT
 from datetime import datetime
 from sys import exit
 from xmltodict import parse, unparse
 
 import logging
 import os
+import requests
+from requests import ConnectionError
+
 
 class NotFoundException(Exception):
     """Raised when there is no problem or tests for the problem
@@ -32,8 +34,25 @@ class UnauthorizedException(Exception):
 class RESTConnection(object):
     """Class gathering all the REST queries and requests."""
 
-    CONNECTION = None
+    URL = None
     SESSION_ID = None
+
+    @classmethod
+    def __get(cls, url):
+        try:
+            return requests.get(SUPERVISOR['HOST'] + url, verify=True)
+        except ConnectionError as e:
+            logging.critical("Connection failed: {}".format(e))
+            exit(1)
+
+    @classmethod
+    def __post(cls, url, *args, **kwargs):
+        try:
+            return requests.post(SUPERVISOR['HOST'] + url, verify=True,
+                                 *args, **kwargs)
+        except ConnectionError as e:
+            logging.critical("Connection failed: {}".format(e))
+            exit(1)
 
     @classmethod
     def is_session_valid(cls):
@@ -51,53 +70,29 @@ class RESTConnection(object):
             raise SessionExpiredException()
 
     @classmethod
-    def _get_connection(cls):
-        """Get the HTTPConnection object, create it if needed."""
-
-        if not cls.CONNECTION:
-            try:
-                cls.CONNECTION = HTTPConnection(SUPERVISOR['HOST'])
-            except HTTPException as e:
-                logging.critical("Connection failed: {}".format(e))
-                exit(1)
-
-        return cls.CONNECTION
-
-    @classmethod
     def get_session(cls):
         """Get a new Supervisor REST session id. Retry if required."""
 
-        c = RESTConnection._get_connection()
-
         # Setup the URL for this request
-        url = SUPERVISOR['REST_URL_PREFIX'] + 'getsession/nodename/' \
-            + NODE['NAME'] + '/nodekey/' + NODE['KEY'] + '/'
-
-        logging.info(
-            "Trying to acquire session id from {}.".format(
-                "http://" + SUPERVISOR['HOST'] + SUPERVISOR['REST_URL_PREFIX']
-            )
+        url = 'getsession/nodename/{name}/nodekey/{key}/'.format(
+            name=NODE['NAME'],
+            key=NODE['KEY']
         )
 
-        try:
-            c.request('GET', url)
-            response = c.getresponse()
-        except Exception as e:
-            logging.critical(
-                "Request failed: {}.".format(e)
-            )
-            exit(1)
+        logging.info("Trying to acquire session id from {}.".format(
+            SUPERVISOR['HOST']
+        ))
 
-        if response.status == UNAUTHORIZED:
+        response = cls.__get(url)
+
+        if response.status_code == UNAUTHORIZED:
             # If not authorized rise an exception
-            logging.info("Node unauthorized. Retrying in {} seconds.".format(
-                NODE['QUERY_TIME'])
-            )
+            logging.info("Node unauthorized.")
             raise UnauthorizedException()
-        elif response.status == OK:
+        elif response.status_code == OK:
             # Parse the recived data
             try:
-                data = response.read()
+                data = response.text
                 data = parse(data)
 
                 cls.SESSION_ID = data['session']['id']
@@ -126,8 +121,6 @@ class RESTConnection(object):
         """End the Supervisor REST session if there is any. If not fail
         silently."""
 
-        c = RESTConnection._get_connection()
-
         # If the session isn't valid then job finished ;)
         try:
             cls.is_session_valid()
@@ -138,32 +131,27 @@ class RESTConnection(object):
             return
 
         # Otherwise prepare the URL and perform the request
-        url = SUPERVISOR['REST_URL_PREFIX'] + 'endsession/sessionid/' \
-            + cls.SESSION_ID + '/'
+        url = 'endsession/sessionid/{}/'.format(cls.SESSION_ID)
 
         logging.info("Trying to end session {}.".format(cls.SESSION_ID))
 
-        c.request('GET', url)
-        response = c.getresponse()
+        response = cls.__get(url)
 
-        if response.status == NOT_FOUND:
+        if response.status_code == NOT_FOUND:
             logging.warning(
                 "There was no session with the given id."
             )
-        elif response.status == OK:
+        elif response.status_code == OK:
             logging.info("Session ended successfully.")
 
     @classmethod
     def post_report(cls):
         """Post the Node report to the Supervisor."""
 
-        c = RESTConnection._get_connection()
-
         cls.is_session_valid()
 
         # Prepare the URL
-        url = SUPERVISOR['REST_URL_PREFIX'] + 'postreport/sessionid/' \
-            + cls.SESSION_ID + '/'
+        url = 'postreport/sessionid/{}/'.format(cls.SESSION_ID)
 
         # Prepare the report
         report = {
@@ -181,19 +169,21 @@ class RESTConnection(object):
         # Generate the XML
         report = unparse(report)
 
-        c.request('POST', url, body=report,
-                  headers={'Content-Type': 'application/xml'})
-        response = c.getresponse()
+        response = cls.__post(
+            url,
+            data=report,
+            headers={'Content-Type': 'application/xml'}
+        )
 
-        if response.status == UNAUTHORIZED:
+        if response.status_code == UNAUTHORIZED:
             logging.warning("Node unauthorized.")
             raise UnauthorizedException()
-        elif response.status == CONFLICT:
+        elif response.status_code == CONFLICT:
             logging.warning("Session expired while performing the request.")
             raise SessionExpiredException()
-        elif response.status == OK:
+        elif response.status_code == OK:
             logging.info("Succesfully posted Node report.")
-        elif response.status == BAD_REQUEST:
+        elif response.status_code == BAD_REQUEST:
             # This should never happen
             logging.critical("Request malformed. Exiting.\n{}".format(report))
             exit(1)
@@ -202,21 +192,17 @@ class RESTConnection(object):
     def get_submission(cls):
         """Get a new submission for judging."""
 
-        c = RESTConnection._get_connection()
-
         cls.is_session_valid()
 
         # Prepare the URL
-        url = SUPERVISOR['REST_URL_PREFIX'] + 'getsubmission/sessionid/' \
-            + cls.SESSION_ID + '/'
+        url = 'getsubmission/sessionid/{}/'.format(cls.SESSION_ID)
 
-        c.request('GET', url)
-        response = c.getresponse()
+        response = cls.__get(url)
 
-        if response.status == OK:
+        if response.status_code == OK:
             # If everyhing is okay then parse the data and return it
             try:
-                data = response.read()
+                data = response.text
                 data = parse(data)
             except Exception as e:
                 logging.error(
@@ -229,13 +215,13 @@ class RESTConnection(object):
             )
             return data['submission']
 
-        elif response.status == NOT_FOUND:
+        elif response.status_code == NOT_FOUND:
             logging.info("No submission recived.")
             raise NotFoundException()
-        elif response.status == UNAUTHORIZED:
+        elif response.status_code == UNAUTHORIZED:
             logging.warning("Node unauthorized.")
             raise UnauthorizedException()
-        elif response.status == CONFLICT:
+        elif response.status_code == CONFLICT:
             logging.warning("Session expired while performing the request.")
             raise SessionExpiredException()
 
@@ -243,12 +229,12 @@ class RESTConnection(object):
     def post_submission(cls, submissionId, submission):
         """Post a judged submission to the Supervisor."""
 
-        c = RESTConnection._get_connection()
-
         cls.is_session_valid()
 
-        url = SUPERVISOR['REST_URL_PREFIX'] + 'postsubmission/sessionid/' \
-            + cls.SESSION_ID + '/submissionid/' + submissionId + '/'
+        url = 'postsubmission/sessionid/{}/submissionid/{}/'.format(
+            cls.SESSION_ID,
+            submissionId
+        )
 
         # Prepare the submission
         data = {
@@ -262,19 +248,21 @@ class RESTConnection(object):
             logging.critical("Data malformed {}.".format(data))
             raise
 
-        c.request('POST', url, body=data,
-                  headers={'Content-Type': 'application/xml'})
-        response = c.getresponse()
+        response = cls.__post(
+            url,
+            data=data,
+            headers={'Content-Type': 'application/xml'}
+        )
 
-        if response.status == OK:
+        if response.status_code == OK:
             logging.info("The results have been sent.")
-        elif response.status == UNAUTHORIZED:
+        elif response.status_code == UNAUTHORIZED:
             logging.warning("Node unauthorized.")
             raise UnauthorizedException()
-        elif response.status == CONFLICT:
+        elif response.status_code == CONFLICT:
             logging.warning("Session expired while performing the request.")
             raise SessionExpiredException()
-        elif response.status == BAD_REQUEST:
+        elif response.status_code == BAD_REQUEST:
             # This should never happen
             logging.critical("Request malformed. Exiting.\n{}".format(data))
             exit(1)
@@ -283,19 +271,18 @@ class RESTConnection(object):
     def get_test_timestamps(cls, problemId):
         """Get the timestamps for the tests for the problem with a given id."""
 
-        c = RESTConnection._get_connection()
-
         cls.is_session_valid()
 
-        url = SUPERVISOR['REST_URL_PREFIX'] + 'gettesttimestamps/sessionid/' \
-            + cls.SESSION_ID + '/problemid/' + problemId + '/'
+        url = 'gettesttimestamps/sessionid/{}/problemid/{}/'.format(
+            cls.SESSION_ID,
+            problemId
+        )
 
-        c.request('GET', url)
-        response = c.getresponse()
+        response = cls.__get(url)
 
-        if response.status == OK:
+        if response.status_code == OK:
             try:
-                data = response.read()
+                data = response.text
                 data = parse(data)
             except Exception as e:
                 logging.error(
@@ -308,15 +295,15 @@ class RESTConnection(object):
             )
             return data['test']
 
-        elif response.status == NOT_FOUND:
+        elif response.status_code == NOT_FOUND:
             logging.info(
                 "No test timestamps for problem {}.".format(problemId)
             )
             raise NotFoundException()
-        elif response.status == UNAUTHORIZED:
+        elif response.status_code == UNAUTHORIZED:
             logging.warning("Node unauthorized.")
             raise UnauthorizedException()
-        elif response.status == CONFLICT:
+        elif response.status_code == CONFLICT:
             logging.warning("Session expired while performing the request.")
             raise SessionExpiredException()
 
@@ -328,25 +315,25 @@ class RESTConnection(object):
         if testType not in ('in', 'out', 'conf'):
             raise TypeError("Type not recognized: {}.".format(testType))
 
-        c = RESTConnection._get_connection()
-
         cls.is_session_valid()
 
-        url = SUPERVISOR['REST_URL_PREFIX'] + 'gettests/sessionid/' \
-            + cls.SESSION_ID + '/problemid/' + problemId + '/' + testType + '/'
+        url = 'gettests/sessionid/{}/problemid/{}/{}/'.format(
+            cls.SESSION_ID,
+            problemId,
+            testType
+        )
 
-        c.request('GET', url)
-        response = c.getresponse()
+        response = cls.__get(url)
 
-        if response.status == OK:
+        if response.status_code == OK:
             cls.__write_to_file(response, path)
-        elif response.status == NOT_FOUND:
+        elif response.status_code == NOT_FOUND:
             logging.info("No tests for problem {}.".format(problemId))
             raise NotFoundException()
-        elif response.status == UNAUTHORIZED:
+        elif response.status_code == UNAUTHORIZED:
             logging.warning("Node unauthorized.")
             raise UnauthorizedException()
-        elif response.status == CONFLICT:
+        elif response.status_code == CONFLICT:
             logging.warning("Session expired while performing the request.")
             raise SessionExpiredException()
 
@@ -361,8 +348,5 @@ class RESTConnection(object):
             os.remove(path)
 
         with open(path, 'w') as output:
-            while True:
-                data = response.read(1024)
-                if not data:
-                    break
-                output.write(data)
+            for chunk in response.iter_content(1024):
+                output.write(chunk)

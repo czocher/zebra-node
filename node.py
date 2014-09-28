@@ -43,9 +43,13 @@ class Node(object):
                 RESTConnection.get_session()
             except UnauthorizedException:
                 # If not authorized by the Supervisor slee and retry
+                logging.warning("Retrying in {} seconds.".format(
+                    NODE['QUERY_TIME']
+                ))
                 sleep(NODE['QUERY_TIME'])
                 continue
             # Else return
+            RESTConnection.post_report()
             break
 
     def judge(self, submission):
