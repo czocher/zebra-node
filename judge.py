@@ -61,6 +61,7 @@ class Judge(threading.Thread):
 
     def compile(self, sandbox):
         """Compile source code and save compile logs"""
+        logging.info("Compiling the submission source.")
         cmd = '{compiler} {compilerArgs} {fileName}.{fileExtension}'.format(
             compiler=LANGUAGES[self.language].compiler,
             compilerArgs=LANGUAGES[self.language].compilerArgs,
@@ -75,11 +76,13 @@ class Judge(threading.Thread):
         )
 
         self.log = '{} {}'.format(*ret[0])
+        logging.info("Compilation finished.")
 
     def execute(self, sandbox):
         """Run program with all tests available for specific task
         and compare using check_solution. Program is limited by execution time
         and memory depending od information taken from the task."""
+        logging.info("Executing the submission.")
         executionPath = LANGUAGES[self.language].execution.format(
             fileName=self.fileName,
             fileExtension=self.fileExtension
@@ -108,6 +111,12 @@ class Judge(threading.Thread):
                 runTime)
             del out
             self.results.append(res)
+        logging.info("Execution finished.")
+
+        if err:
+            logging.warning("There were errors during execution:\n{}".format(
+                err
+            ))
 
     def get_results(self):
         """Return compiler logs and results"""

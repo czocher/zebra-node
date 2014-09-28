@@ -59,10 +59,15 @@ class Node(object):
 
         judge.start()
         judge.join()
+        logging.info("Judging of submission {sid} finished.".format(
+            **submission
+        ))
 
         return (judge.get_results(), judge.get_compilation_log())
 
     def post_results(self, results, submission):
+
+        logging.info("Sending the judging results.")
 
         results, compilelog = results
 
@@ -114,4 +119,5 @@ class Node(object):
                 self.post_results(results, submission)
 
             # Sleep for a few seconds waiting for a next turn
+            logging.info("Waiting for next request.")
             sleep(NODE['QUERY_TIME'])
