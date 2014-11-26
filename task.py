@@ -1,19 +1,20 @@
 #! /usr/bin/env python
 #-*- coding: utf8 -*-
+from utils import iso_to_datetime, get_file_modification_date
 from test import Test
 from settings import NODE
 from rest import RESTConnection
 import os
 import tarfile
 import logging
-import xmltodict
+import json
 
 
 class Task(object):
     """Represents single task. It is defined by a problem id and
     manages tests for that problem."""
 
-    def __init__(self, pid):
+    def __init__(self, problem):
         """Load tests for the given problem id."""
         raise NotImplementedError()
 
@@ -31,13 +32,13 @@ class Task(object):
         raise NotImplementedError()
 
     @staticmethod
-    def new(pid):
+    def new(problem):
         """Create a new task object according to the settings."""
 
         if NODE['TEST_BACKEND'] == 'file':
-            return FileTask(pid)
+            return FileTask(problem)
         elif NODE['TEST_BACKEND'] == 'rest':
-            return RESTTask(pid)
+            return RESTTask(problem)
 
 
 class FileTask(Task):
@@ -48,8 +49,8 @@ class FileTask(Task):
 class RESTTask(Task):
     """Task which loads tests from the REST web service."""
 
-    def __init__(self, pid):
-        self.pid = pid
+    def __init__(self, problem):
+        self.problem = problem
         self._tests = {}
         self.timestamp = [0, 0, 0]
 
@@ -64,62 +65,73 @@ class RESTTask(Task):
 
     def _check_updates(self):
         logging.info("Checking if tests are up-to-date.")
-        inpt_path = self.__get_test_path(NODE['TEST_PATH'], self.pid, 'in')
-        out_path = self.__get_test_path(NODE['TEST_PATH'], self.pid, 'out')
-        conf_path = self.__get_test_path(NODE['TEST_PATH'], self.pid, 'conf')
+        inpt_path = self.__get_test_path(
+            NODE['TEST_PATH'], self.problem, 'input')
+        out_path = self.__get_test_path(
+            NODE['TEST_PATH'], self.problem, 'output')
+        conf_path = self.__get_test_path(
+            NODE['TEST_PATH'], self.problem, 'config')
 
         if not os.path.exists(inpt_path) or not os.path.exists(out_path) or \
            not os.path.exists(conf_path):
-            logging.info("Tests for problem {} do not exist.".format(self.pid))
+            logging.info(
+                "Tests for problem {} do not exist.".format(self.problem)
+            )
             self._load_tests()
         else:
-            data = RESTConnection.get_test_timestamps(self.pid)
+            data = RESTConnection.get_test_timestamps(self.problem)
 
-            inpt_time = int(data['in'])
-            out_time = int(data['out'])
-            conf_time = int(data['conf'])
+            inpt_time = iso_to_datetime(data['input'])
+            out_time = iso_to_datetime(data['output'])
+            conf_time = iso_to_datetime(data['config'])
 
-            if int(os.path.getmtime(inpt_path)) < inpt_time or \
-               int(os.path.getmtime(out_path)) < out_time or \
-               int(os.path.getmtime(conf_path)) < conf_time:
-                logging.info("Tests for problem {} outdated.".format(self.pid))
+            if get_file_modification_date(inpt_path) < inpt_time or \
+               get_file_modification_date(out_path) < out_time or \
+               get_file_modification_date(conf_path) < conf_time:
+                logging.info(
+                    "Tests for problem {} outdated.".format(self.problem)
+                )
                 self._load_tests()
             logging.info(
-                "Tests for problem {} are up-to-date.".format(self.pid)
+                "Tests for problem {} are up-to-date.".format(self.problem)
             )
 
-        logging.info("Tests for problem {} loaded.".format(self.pid))
+        logging.info("Tests for problem {} loaded.".format(self.problem))
         self.__fill_tests(
-            self.__get_test_path(NODE['TEST_PATH'], self.pid, 'conf'),
-            self.__get_test_path(NODE['TEST_PATH'], self.pid, 'out'),
-            self.__get_test_path(NODE['TEST_PATH'], self.pid, 'in')
+            self.__get_test_path(NODE['TEST_PATH'], self.problem, 'config'),
+            self.__get_test_path(NODE['TEST_PATH'], self.problem, 'output'),
+            self.__get_test_path(NODE['TEST_PATH'], self.problem, 'input')
         )
 
     @staticmethod
-    def __get_test_path(path, pid, testType):
+    def __get_test_path(path, problem, testType):
         """Creates an absolute path to the test file."""
-        return os.path.join(path, pid, testType + '.tar.gz')
+        return os.path.join(path, problem, testType + '.tar.gz')
 
     def _load_tests(self):
-        logging.info("Updating tests for problem {}.".format(self.pid))
+        logging.info("Updating tests for problem {}.".format(self.problem))
 
-        inpt_path = self.__get_test_path(NODE['TEST_PATH'], self.pid, 'in')
-
+        inpt_path = self.__get_test_path(
+            NODE['TEST_PATH'], self.problem, 'input')
         RESTConnection.get_tests(
-            problemId=self.pid,
-            testType='in',
+            problem=self.problem,
+            testType='input',
             path=inpt_path
         )
-        out_path = self.__get_test_path(NODE['TEST_PATH'], self.pid, 'out')
+
+        out_path = self.__get_test_path(
+            NODE['TEST_PATH'], self.problem, 'output')
         RESTConnection.get_tests(
-            problemId=self.pid,
-            testType='out',
+            problem=self.problem,
+            testType='output',
             path=out_path
         )
-        conf_path = self.__get_test_path(NODE['TEST_PATH'], self.pid, 'conf')
+
+        conf_path = self.__get_test_path(
+            NODE['TEST_PATH'], self.problem, 'config')
         RESTConnection.get_tests(
-            problemId=self.pid,
-            testType='conf',
+            problem=self.problem,
+            testType='config',
             path=conf_path
         )
 
@@ -129,10 +141,10 @@ class RESTTask(Task):
         with tarfile.open(conf_path, mode='r:gz') as conf:
             for tarinfo in conf:
                 data = conf.extractfile(tarinfo).read()
-                data = xmltodict.parse(data)
-                memory = int(data['test']['memory'])
-                time = int(data['test']['time'])
-                sample = bool(int(data['test']['sample']))
+                data = json.loads(data)
+                memory = int(data['memory'])
+                time = int(data['time'])
+                sample = bool(int(data['sample']))
                 test = Test(memoryLimit=memory, timeLimit=time,
                             isSampleTest=sample)
                 self._tests.update({tarinfo.name: test})

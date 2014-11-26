@@ -10,8 +10,7 @@ import sys
 # Set the default locale for dates and times in logs
 locale.setlocale(locale.LC_ALL, '')
 
-FORMAT = '%(asctime)s - %(levelname)s - ' \
-        + NODE['NAME'] + ' [%(module)s.%(funcName)s] %(message)s'
+FORMAT = '%(asctime)s - %(levelname)s - [%(module)s.%(funcName)s] %(message)s'
 
 logging.basicConfig(
     level=logging.DEBUG,

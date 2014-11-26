@@ -25,10 +25,8 @@ LANGUAGES = {
 
 # Node configuration
 NODE = {
-    # The name of the Node visible for the Supervisor
-    'NAME': 'Test',
     # The Node's secret key checked in the Supervisor
-    'KEY': 'ABCD',
+    'TOKEN': 'ABCD',
     # The Node's version sent to the Supervisor
     'VERSION': '0.01',
     # The Node's RAM in MiB.

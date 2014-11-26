@@ -1,26 +1,18 @@
-# -*- coding: utf-8 -*-
+#-*- coding: utf-8 -*-
+from datetime import datetime
+import os
 
-from os import statvfs
-from os.path import abspath
 
+def iso_to_datetime(iso):
+    return datetime.strptime(iso, '%Y-%m-%dT%H:%M:%SZ')
+
+
+def get_file_modification_date(filename):
+    t = os.path.getmtime(filename)
+    return datetime.fromtimestamp(t)
 
 def get_free_memory():
     with open('/proc/meminfo', 'r') as mem:
         total, free, buffers, cached = [int(next(mem).split()[1])
                                         for x in xrange(4)]
-    return free + cached
-
-
-def get_processor_frequency():
-    with open('/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq', 'r') \
-            as cpu:
-        frequency = int(cpu.read())
-    return frequency
-
-
-def get_free_diskspace():
-    s = statvfs(abspath(__file__))
-
-    # Number of free bytes that ordinary users are allowed to users
-    free = s.f_frsize * s.f_bavail / 1000000
-    return free
+        return free + cached

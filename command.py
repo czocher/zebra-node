@@ -16,7 +16,6 @@ class Command(object):
         self.process = None
 
     def run(self, input, timeLimit):
-
         def target():
             self.process = Popen(self.cmd, *self.args, **self.kwargs)
             self.output = self.process.communicate(input)

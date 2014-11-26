@@ -4,8 +4,7 @@ from judge import Judge
 from utils import get_free_memory
 from task import Task
 from settings import NODE
-from rest import RESTConnection, UnauthorizedException, \
-    SessionExpiredException, NotFoundException
+from rest import RESTConnection, UnauthorizedException, NotFoundException
 from time import time, sleep
 from xml.sax.saxutils import escape
 import logging
@@ -35,35 +34,18 @@ class Node(object):
         task.lastUseTime = time()
         return task
 
-    def authenticate(self):
-        """Authenticate with the Supervisor."""
-
-        while True:
-            try:
-                RESTConnection.get_session()
-            except UnauthorizedException:
-                # If not authorized by the Supervisor slee and retry
-                logging.warning("Retrying in {} seconds.".format(
-                    NODE['QUERY_TIME']
-                ))
-                sleep(NODE['QUERY_TIME'])
-                continue
-            # Else return
-            RESTConnection.post_report()
-            break
-
     def judge(self, submission):
         logging.info(
             "Starting to judge submission: "
-            "sid {sid} pid {pid} language {language}.".format(**submission)
+            "id {id} pid {problem} language {language}.".format(**submission)
         )
 
-        task = self.get_task(submission['pid'])
+        task = self.get_task(submission['problem'])
         judge = Judge(task, submission)
 
         judge.start()
         judge.join()
-        logging.info("Judging of submission {sid} finished.".format(
+        logging.info("Judging of submission {id} finished.".format(
             **submission
         ))
 
@@ -76,24 +58,22 @@ class Node(object):
         results, compilelog = results
 
         data = {
-            'status': 1,
+            'error': False,
             'compilelog': escape(compilelog),
-            'results': {'result': [result.__dict__ for result in results]}
+            'results': [result.__dict__ for result in results]
         }
 
-        RESTConnection.post_submission(submission['sid'], data)
+        RESTConnection.post_submission(submission['id'], data)
 
     def report_judging_error(self, submission):
         logging.info("Reporting the error...")
-        RESTConnection.post_submission(submission['sid'], {'status': 0, })
+        RESTConnection.post_submission(submission['id'], {'error': True, })
 
     def run(self):
         """Start the Node daemon. Try to judge a submission
         then sleep and repeat."""
 
         logging.info("Node has been started.")
-
-        self.authenticate()
 
         while True:
             try:
@@ -103,9 +83,10 @@ class Node(object):
                 logging.info("No submission to judge. Waiting...")
                 sleep(NODE['QUERY_TIME'])
                 continue
-            except (SessionExpiredException, UnauthorizedException):
+            except UnauthorizedException:
                 # Session expired or node was unauthorized retry
-                self.authenticate()
+                logging.warning("Node unauthorized. Waiting...")
+                sleep(NODE['QUERY_TIME'])
                 continue
 
             try:
