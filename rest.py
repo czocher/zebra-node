@@ -110,7 +110,6 @@ class RESTConnection(object):
         except:
             logging.critical("Data malformed {}.".format(submission))
             raise
-        print data
 
         response = cls.__put(
             url,
