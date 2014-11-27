@@ -21,8 +21,8 @@ class Judge(threading.Thread):
             fileName = LANGUAGES[self.language].fileName
         self.fileFullName = fileName
         self.fileName, self.fileExtension = fileName.split('.')
-        self.results = []
-        self.log = None
+        self._results = []
+        self._compilation_log = None
         self.source = submission['source']
 
         # If the submission was sent in an active contest
@@ -75,7 +75,7 @@ class Judge(threading.Thread):
             timeLimit=NODE['SANDBOX']['COMPILER_TIMELIMIT']
         )
 
-        self.log = '{} {}'.format(*ret[0])
+        self._compilation_log = '{} {}'.format(*ret[0])
         logging.info("Compilation finished.")
 
     def execute(self, sandbox):
@@ -111,7 +111,7 @@ class Judge(threading.Thread):
                 int(self.check_solution(out, test.output) and returncode != 9),
                 runTime)
             del out
-            self.results.append(res)
+            self._results.append(res)
         logging.info("Execution finished.")
 
         if err:
@@ -119,13 +119,15 @@ class Judge(threading.Thread):
                 err
             ))
 
-    def get_results(self):
+    @property
+    def results(self):
         """Return compiler logs and results"""
-        if len(self.results) == 0:
+        if len(self._results) == 0:
             return None
-        return self.results
+        return self._results
 
-    def get_compilation_log(self):
-        if not self.log:
+    @property
+    def compilation_log(self):
+        if not self._compilation_log:
             return None
-        return self.log
+        return self._compilation_log

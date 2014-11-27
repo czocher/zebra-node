@@ -69,7 +69,7 @@ class SELinuxSandbox(Sandbox):
     """SELinux-based sandbox implementation."""
 
     def __init__(self):
-        self.sandboxCmd = 'sandbox -t sandbox_min_t' +\
+        self.sandboxCmd = 'sandbox -t sandbox_t' +\
             ' -M -H {sandboxHome} -T {sandboxTmp}'.format(
             sandboxHome=NODE['SANDBOX']['HOME_DIR'],
             sandboxTmp=NODE['SANDBOX']['TMP_DIR'])

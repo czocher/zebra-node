@@ -49,7 +49,7 @@ class Node(object):
             **submission
         ))
 
-        return (judge.get_results(), judge.get_compilation_log())
+        return (judge.results, judge.compilation_log)
 
     def post_results(self, results, submission):
 
