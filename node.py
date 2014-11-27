@@ -101,7 +101,14 @@ class Node(object):
                 self.report_judging_error(submission)
                 raise
             else:
-                self.post_results(results, submission)
+                try:
+                    self.post_results(results, submission)
+                except Exception as e:
+                    logging.error(
+                        "There was an error during judging: {}".format(e)
+                    )
+                    self.report_judging_error(submission)
+
 
             # Sleep for a few seconds waiting for a next turn
             logging.info("Waiting for next request.")
