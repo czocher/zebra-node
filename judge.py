@@ -85,7 +85,8 @@ class Judge(threading.Thread):
         logging.info("Executing the submission.")
         executionPath = LANGUAGES[self.language].execution.format(
             fileName=self.fileName,
-            fileExtension=self.fileExtension
+            fileExtension=self.fileExtension,
+            sandboxHome=NODE['SANDBOX']['HOME_DIR'],
         )
 
         for test in self.task.tests.itervalues():

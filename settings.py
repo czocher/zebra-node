@@ -10,12 +10,15 @@ p = lambda *x: os.path.join(PROJECT_ROOT, *x)
 # Language(compiler name, compiler arguments,
 #          execution command, file extension)
 LANGUAGES = {
-    'C': Language("gcc", "-O2 -Wall -oresult", "./result", "prog.c"),
-    'C++': Language("g++", "-O2 -Wall -oresult", "./result", "prog.cpp"),
-    'Pascal': Language("fpc", "-O2 -oresult", "./result", "prog.pas"),
+    'C': Language("gcc", "-O2 -Wall -oresult", "{sandboxHome}/result",
+                  "prog.c"),
+    'C++': Language("g++", "-O2 -Wall -oresult", "{sandboxHome}/result",
+                    "prog.cpp"),
+    'Pascal': Language("fpc", "-O2 -oresult", "{sandboxHome}/result",
+                       "prog.pas"),
     'Python': Language("python", "-m py_compile",
                        "python {fileName}.{fileExtension}", "prog.py"),
-    'Java': Language("javac", "", "java FILENAME",
+    'Java': Language("javac", "", "java  -Xmx2000k {fileName}",
                      lambda sourceCode: search("public\s*class\s*(.*)\s*{",
                                   sourceCode).group(1) + ".java")
 }
@@ -49,8 +52,8 @@ NODE = {
         'BACKEND': 'selinux',
         # Sandbox temporary directories used while sandboxing
         # and deleted soon after
-        'HOME_DIR': p('sandbox_home'),
-        'TMP_DIR': p('sandbox_tmp'),
+        'HOME_DIR': './sandbox_home',
+        'TMP_DIR': './sandbox_tmp',
         # Limit for compilation time in seconds
         'COMPILER_TIMELIMIT': 5,
     }

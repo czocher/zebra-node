@@ -69,11 +69,10 @@ class SELinuxSandbox(Sandbox):
     """SELinux-based sandbox implementation."""
 
     def __init__(self):
-        self.sandboxCmd = 'sandbox -t sandbox_min_t'
-        ' -M -H {sandboxHome} -T {sandboxTmp}'.format(
+        self.sandboxCmd = 'sandbox -t sandbox_min_t' +\
+            ' -M -H {sandboxHome} -T {sandboxTmp}'.format(
             sandboxHome=NODE['SANDBOX']['HOME_DIR'],
-            sandboxTmp=NODE['SANDBOX']['TMP_DIR']
-        )
+            sandboxTmp=NODE['SANDBOX']['TMP_DIR'])
 
     def execute(self, command, input, *args, **kwargs):
 
@@ -93,6 +92,5 @@ class SELinuxSandbox(Sandbox):
             command=command
         ), stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
 
-        os.chdir(NODE['SANDBOX']['HOME_DIR'])
         c.run(input, timeLimit)
         return (c.output, c.returncode, c.time)
