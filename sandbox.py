@@ -84,19 +84,15 @@ class SELinuxSandbox(Sandbox):
             sandboxTmp=NODE['SANDBOX']['TMP_DIR'])
 
     def test_sandbox(self):
-        ulimitCmd = 'ulimit -v {memoryLimit};'.format(
-            memoryLimit=20000000
-        )
         command = 'echo "Hello, world!"'
-
-        c = Command('{ulimit}{sandbox} {command}'.format(
-            ulimit=ulimitCmd,
-            sandbox=self.sandboxCmd,
-            command=command
-        ), stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
-        c.run("", 1)
-        if c.returncode != 0:
-            raise UnsupportedSandboxException(c.output)
+        c = self.execute(
+            command,
+            input="",
+            memoryLimit=200000,
+            timeLimit=1
+        )
+        if c[1] != 0:
+            raise UnsupportedSandboxException(c)
 
     def execute(self, command, input, *args, **kwargs):
 
