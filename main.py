@@ -1,8 +1,7 @@
-#! /bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from settings import NODE
 from node import Node
-from rest import RESTConnection
+from sandbox import Sandbox
 import locale
 import logging
 import sys
@@ -19,6 +18,11 @@ logging.basicConfig(
 )
 
 if __name__ == '__main__':
+    # Test if the chosen sandbox can run on this system
+    with Sandbox.new() as sandbox:
+        sandbox.test_sandbox()
+
+    # Start the Node
     try:
         node = Node()
         node.run()

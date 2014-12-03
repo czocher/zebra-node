@@ -1,26 +1,43 @@
 #-*- coding: utf8 -*-
-from language import Language
 from re import search
 import os
 
 PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
 p = lambda *x: os.path.join(PROJECT_ROOT, *x)
 
-# List of languages supported by the Node.
-# Language(compiler name, compiler arguments,
-#          execution command, file extension)
+# List of languages supported by the Node
 LANGUAGES = {
-    'C': Language("gcc", "-O2 -Wall -oresult", "{sandboxHome}/result",
-                  "prog.c"),
-    'C++': Language("g++", "-O2 -Wall -oresult", "{sandboxHome}/result",
-                    "prog.cpp"),
-    'Pascal': Language("fpc", "-O2 -oresult", "{sandboxHome}/result",
-                       "prog.pas"),
-    'Python': Language("python", "-m py_compile",
-                       "python {fileName}.{fileExtension}", "prog.py"),
-    'Java': Language("javac", "", "java  -Xmx2000k {fileName}",
-                     lambda sourceCode: search("public\s*class\s*(.*)\s*{",
-                                  sourceCode).group(1) + ".java")
+    'C': {
+        'compiler': 'gcc',
+        'compilerOptions': '-O2 -Wall -oresult',
+        'runCommand': '{sandboxHome}/result',
+        'sourceFilename': 'prog.c',
+    },
+    'C++': {
+        'compiler': 'g++',
+        'compilerOptions': '-O2 -Wall -oresult',
+        'runCommand': '{sandboxHome}/result',
+        'sourceFilename': 'prog.cpp'
+    },
+    'Pascal': {
+        'compiler': 'fpc',
+        'compilerOptions': '-O2 -oresult',
+        'runCommand': '{sandboxHome}/result',
+        'sourceFilename': 'prog.pas'
+    },
+    'Python': {
+        'compiler': 'python',
+        'compilerOptions': '-m py_compile',
+        'runCommand': 'python {fileName}.{fileExtension}',
+        'sourceFilename': 'prog.py'
+    },
+    'Java': {
+        'compiler': 'javac',
+        'compilerOptions': "",
+        'runCommand': 'java  -Xmx2000k {fileName}',
+        'sourceFilename': lambda sourceCode: search('public\s*class\s*(.*)\s*{',
+                                  sourceCode).group(1) + '.java'
+    }
 }
 
 # Sandbox execution command used when a submission is begin compiled
@@ -61,6 +78,6 @@ NODE = {
 
 # Supervisor configuration
 SUPERVISOR = {
-    # The address of the Supervisor rest webservice
+    # The address of the Supervisor REST webservice
     'HOST': 'http://localhost:8000/rest/',
 }

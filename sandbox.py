@@ -7,11 +7,20 @@ import codecs
 import logging
 
 
+class UnsupportedSandboxException(Exception):
+    """Raised when the system cannot run this type of sandbox environment."""
+    pass
+
+
 class Sandbox(object):
     """Abstract sandbox class."""
 
     def execute(self, command, input, timeout):
         """Execute the given command in the sandbox environment."""
+        raise NotImplementedError()
+
+    def test_sandbox(self):
+        """Test if the system can run this type of sandbox environment."""
         raise NotImplementedError()
 
     @staticmethod
@@ -73,6 +82,21 @@ class SELinuxSandbox(Sandbox):
             ' -M -H {sandboxHome} -T {sandboxTmp}'.format(
             sandboxHome=NODE['SANDBOX']['HOME_DIR'],
             sandboxTmp=NODE['SANDBOX']['TMP_DIR'])
+
+    def test_sandbox(self):
+        ulimitCmd = 'ulimit -v {memoryLimit};'.format(
+            memoryLimit=20000000
+        )
+        command = 'echo "Hello, world!"'
+
+        c = Command('{ulimit}{sandbox} {command}'.format(
+            ulimit=ulimitCmd,
+            sandbox=self.sandboxCmd,
+            command=command
+        ), stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
+        c.run("", 1)
+        if c.returncode != 0:
+            raise UnsupportedSandboxException(c.output)
 
     def execute(self, command, input, *args, **kwargs):
 

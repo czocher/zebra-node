@@ -15,10 +15,9 @@ class Judge(threading.Thread):
     def __init__(self, task, submission):
         self.task = task
         self.language = submission['language']
-        if callable(LANGUAGES[self.language].fileName):
-            fileName = LANGUAGES[self.language].fileName(submission['source'])
-        else:
-            fileName = LANGUAGES[self.language].fileName
+        fileName = LANGUAGES[self.language].get('sourceFilename')
+        if callable(fileName):
+            fileName = fileName(submission['source'])
         self.fileFullName = fileName
         self.fileName, self.fileExtension = fileName.split('.')
         self._results = []
@@ -62,9 +61,9 @@ class Judge(threading.Thread):
     def compile(self, sandbox):
         """Compile source code and save compile logs"""
         logging.info("Compiling the submission source.")
-        cmd = '{compiler} {compilerArgs} {fileName}.{fileExtension}'.format(
-            compiler=LANGUAGES[self.language].compiler,
-            compilerArgs=LANGUAGES[self.language].compilerArgs,
+        cmd = '{compiler} {compilerOptions} {fileName}.{fileExtension}'.format(
+            compiler=LANGUAGES[self.language].get('compiler'),
+            compilerOptions=LANGUAGES[self.language].get('compilerOptions'),
             fileName=self.fileName,
             fileExtension=self.fileExtension
         )
@@ -83,7 +82,7 @@ class Judge(threading.Thread):
         and compare using check_solution. Program is limited by execution time
         and memory depending od information taken from the task."""
         logging.info("Executing the submission.")
-        executionPath = LANGUAGES[self.language].execution.format(
+        executionPath = LANGUAGES[self.language].get('runCommand').format(
             fileName=self.fileName,
             fileExtension=self.fileExtension,
             sandboxHome=NODE['SANDBOX']['HOME_DIR'],

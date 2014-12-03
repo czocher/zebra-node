@@ -117,8 +117,10 @@ class RESTConnection(object):
             headers={'Content-Type': 'application/json'}
         )
 
-        if response.status_code == OK:
+        if response.status_code == OK and not submission['error']:
             logging.info("The results have been sent.")
+        elif response.status_code == OK and submission['error']:
+            logging.info("Supervisor has been notified about the failure.")
         elif response.status_code == FORBIDDEN:
             logging.warning("Node unauthorized.")
             raise UnauthorizedException()
