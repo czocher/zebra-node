@@ -96,7 +96,7 @@ class RESTConnection(object):
         else:
             logging.error("Unknown error status code: {}".format(
                 response.status_code))
-            raise UnauthorizedException()
+            raise UnknownErrorException()
 
     @classmethod
     def post_submission(cls, submissionId, submission):
@@ -162,7 +162,7 @@ class RESTConnection(object):
         else:
             logging.error("Unknown error status code: {}".format(
                 response.status_code))
-            raise UnauthorizedException()
+            raise UnknownErrorException()
 
     @classmethod
     def get_tests(cls, problem, testType, path):
@@ -187,7 +187,7 @@ class RESTConnection(object):
         else:
             logging.error("Unknown error status code: {}".format(
                 response.status_code))
-            raise UnauthorizedException()
+            raise UnknownErrorException()
 
     @classmethod
     def __write_to_file(cls, response, path):
