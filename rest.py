@@ -39,7 +39,7 @@ class RESTConnection(object):
             return requests.get(
                 SUPERVISOR['HOST'] + url + '?format=json',
                 verify=True,
-                headers={'x_token': NODE['TOKEN']}
+                headers={'X-token': NODE['TOKEN']}
             )
         except ConnectionError as e:
             logging.critical("Connection failed: {}".format(e))
@@ -48,7 +48,7 @@ class RESTConnection(object):
     @classmethod
     def __put(cls, url, *args, **kwargs):
         """Perform a POST request on the given URL."""
-        headers = {'x_token': NODE['TOKEN']}
+        headers = {'X-token': NODE['TOKEN']}
         headers.update(kwargs.get('headers', {}))
         del kwargs['headers']
         try:
