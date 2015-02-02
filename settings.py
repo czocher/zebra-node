@@ -40,17 +40,10 @@ LANGUAGES = {
     }
 }
 
-# Sandbox execution command used when a submission is begin compiled
-# and executed
-
 # Node configuration
 NODE = {
     # The Node's secret key checked in the Supervisor
     'TOKEN': 'ABCD',
-    # The Node's version sent to the Supervisor
-    'VERSION': '0.01',
-    # The Node's RAM in MiB.
-    'MAX_MEMORY': 262144,
     # The minimal time in seconds between Node's query to the Supervisor
     'QUERY_TIME': 5,
     # Can be 'file', 'http' or 'S3'
