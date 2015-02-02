@@ -88,7 +88,7 @@ class SELinuxSandbox(Sandbox):
         c = self.execute(
             command,
             input="",
-            memoryLimit=200000,
+            memoryLimit=2000000,
             timeLimit=1
         )
         if c[1] != 0:
