@@ -41,7 +41,6 @@ class Node(object):
         )
         task = self.get_task(submission['problem'])
         judge = Judge(task, submission)
-
         judge.start()
         judge.join()
 
@@ -105,7 +104,7 @@ class Node(object):
                     self.post_results(results, submission)
                 except Exception as e:
                     logging.error(
-                        "There was an error during judging: {}".format(e)
+                        "There was an error during result posting: {}".format(e)
                     )
                     self.report_judging_error(submission)
 
