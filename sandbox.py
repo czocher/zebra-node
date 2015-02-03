@@ -100,7 +100,7 @@ class SELinuxSandbox(Sandbox):
         timeLimit = kwargs.get('timeLimit')
 
         if memoryLimit:
-            ulimitCmd = 'ulimit -v {memoryLimit};'.format(
+            ulimitCmd = 'ulimit -m {memoryLimit};'.format(
                 memoryLimit=memoryLimit
             )
         else:
