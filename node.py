@@ -39,12 +39,15 @@ class Node(object):
             "Starting to judge submission: "
             "id {id} pid {problem} language {language}.".format(**submission)
         )
-
+        print "-1"
         task = self.get_task(submission['problem'])
+        print "0"
         judge = Judge(task, submission)
 
+        print "1"
         judge.start()
         judge.join()
+        print "2"
         logging.info("Judging of submission {id} finished.".format(
             **submission
         ))

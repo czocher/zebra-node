@@ -46,6 +46,8 @@ NODE = {
     'TOKEN': 'ABCD',
     # The minimal time in seconds between Node's query to the Supervisor
     'QUERY_TIME': 5,
+    # The max memory in kb the node provides
+    'MAX_MEMORY': 1000000,
     # Can be 'file', 'http' or 'S3'
     # 'file' - get all the tests from the local file system
     # Warning! The tests won't be downloaded if they're not found
