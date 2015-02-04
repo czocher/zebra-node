@@ -2,6 +2,7 @@
 from settings import NODE
 from command import Command
 from subprocess import PIPE
+from subprocess import Popen
 import os
 import codecs
 import logging
@@ -95,7 +96,7 @@ class SELinuxSandbox(Sandbox):
             raise UnsupportedSandboxException(c)
 
     def execute(self, command, input, *args, **kwargs):
-
+        # Prepare the command
         memoryLimit = kwargs.get('memoryLimit')
         timeLimit = kwargs.get('timeLimit')
 
@@ -107,11 +108,22 @@ class SELinuxSandbox(Sandbox):
         else:
             ulimitCmd = ''
 
-        c = Command('{ulimit}{sandbox} {command}'.format(
+        timeCmd = '/usr/bin/time -o time.log -f %U'
+
+        # Run the process
+        process = Popen('{ulimit}{sandbox} {time} {command}'.format(
             ulimit=ulimitCmd,
             sandbox=self.sandboxCmd,
+            time=timeCmd,
             command=command
         ), stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
 
-        c.run(input)
-        return (c.output, c.returncode, c.time)
+        output = process.communicate(input)
+
+        # Get the time from the logging
+        time = 0
+        with open(os.path.join(NODE['SANDBOX']['HOME_DIR'], 'time.log'),
+                  'r') as timeLogFile:
+            time = float(timeLogFile.read().strip())
+
+        return (output, process.returncode, time)
