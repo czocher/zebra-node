@@ -35,8 +35,8 @@ LANGUAGES = {
         'compiler': 'javac',
         'compilerOptions': "",
         'runCommand': 'java  -Xmx2000k {fileName}',
-        'sourceFilename': lambda sourceCode: search('public\s*class\s*(.*)\s*{',
-                                  sourceCode).group(1) + '.java'
+        'sourceFilename': lambda sourceCode: search(
+            'public\s*class\s*([^\s]*)\s*{', sourceCode).group(1) + '.java'
     }
 }
 
