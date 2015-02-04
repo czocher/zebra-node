@@ -15,7 +15,7 @@ class Command(object):
         self.returncode = None
         self.process = None
 
-    def run(self, input, timeLimit):
+    def run(self, input):
         def target():
             self.process = Popen(self.cmd, *self.args, **self.kwargs)
             self.output = self.process.communicate(input)
@@ -23,10 +23,7 @@ class Command(object):
         thread = threading.Thread(target=target)
         start_time = time()
         thread.start()
-        thread.join(timeout=timeLimit)
-        if thread.is_alive():
-            self.process.kill()
-            thread.join()
+        thread.join()
         end_time = time()
         self.time = end_time - start_time
         self.returncode = self.process.returncode

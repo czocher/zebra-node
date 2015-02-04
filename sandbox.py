@@ -100,7 +100,7 @@ class SELinuxSandbox(Sandbox):
         timeLimit = kwargs.get('timeLimit')
 
         if memoryLimit:
-            ulimitCmd = 'ulimit -m {memoryLimit} -t {timeLimit};'.format(
+            ulimitCmd = 'ulimit -v {memoryLimit} -t {timeLimit};'.format(
                 memoryLimit=memoryLimit,
                 timeLimit=timeLimit
             )
@@ -113,5 +113,5 @@ class SELinuxSandbox(Sandbox):
             command=command
         ), stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
 
-        c.run(input, timeLimit)
+        c.run(input)
         return (c.output, c.returncode, c.time)
