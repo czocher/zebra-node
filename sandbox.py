@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from settings import NODE
-from command import Command
 from subprocess import PIPE
 from subprocess import Popen
 import os
