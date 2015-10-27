@@ -64,6 +64,7 @@ class RESTTask(Task):
         self._tests = value
 
     def _check_updates(self):
+        """Check if tests are up-to-date, if not download new ones."""
         logging.info("Checking if tests are up-to-date.")
         inpt_path = self.__get_test_path(
             NODE['TEST_PATH'], self.problem, 'input')
@@ -91,6 +92,7 @@ class RESTTask(Task):
                 logging.info(
                     "Tests for problem {} outdated.".format(self.problem)
                 )
+                self._remove_tests()
                 self._load_tests()
             logging.info(
                 "Tests for problem {} are up-to-date.".format(self.problem)
@@ -108,7 +110,26 @@ class RESTTask(Task):
         """Creates an absolute path to the test file."""
         return os.path.join(path, problem, testType + '.tar.gz')
 
+    def _remove_tests(self):
+        """Remove all test files for a given task."""
+        logging.info("Removing old tests for problem {}.".format(self.problem))
+
+        inpt_path = self.__get_test_path(
+                NODE['TEST_PATH'], self.problem, 'input')
+        os.remove(inpt_path)
+
+        out_path = self.__get_test_path(
+                NODE['TEST_PATH'], self.problem, 'output')
+        os.remove(out_path)
+
+        conf_path = self.__get_test_path(
+                NODE['TEST_PATH'], self.problem, 'config')
+        os.remove(conf_path)
+
+
     def _load_tests(self):
+        """Load tests from REST webservice and save them as files."""
+
         logging.info("Updating tests for problem {}.".format(self.problem))
 
         inpt_path = self.__get_test_path(
