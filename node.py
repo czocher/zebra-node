@@ -22,16 +22,13 @@ class Node(object):
 
         if pid not in self.tasks:
             self.tasks[pid] = Task.new(pid)
-        while get_free_memory() < NODE['MAX_MEMORY'] and len(self.tasks) > 1:
-            minTime = time()
-            lru = None
-            for task in self.tasks:
-                if self.tasks[task].lastUseTime < minTime:
-                    minTime = self.tasks[task].lastUseTime
-                    lru = task
-            del self.tasks[lru]
+
         task = self.tasks[pid]
         task.lastUseTime = time()
+
+        # Check if there is enough memory
+        # if not remove the last recently used task
+
         return task
 
     def judge(self, submission):
