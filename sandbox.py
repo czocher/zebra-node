@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from settings import NODE
+from settings import NODE, LANGUAGES
 from subprocess import PIPE
 from subprocess import Popen
 import os
@@ -84,15 +84,16 @@ class SELinuxSandbox(Sandbox):
             sandboxTmp=NODE['SANDBOX']['TMP_DIR'])
 
     def test_sandbox(self):
-        command = 'echo "Hello, world!"'
-        c = self.execute(
-            command,
-            input="",
-            memoryLimit=2000000,
-            timeLimit=1
-        )
-        if c[1] != 0:
-            raise UnsupportedSandboxException(c)
+        for lang in LANGUAGES.itervalues():
+            command = 'which ' + lang['compiler']
+            c = self.execute(
+                command,
+                input="",
+                memoryLimit=2000000,
+                timeLimit=1
+            )
+            if c[1] != 0:
+                raise UnsupportedSandboxException(c)
 
     def execute(self, command, input, *args, **kwargs):
         # Prepare the command
