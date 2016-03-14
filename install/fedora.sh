@@ -1,3 +1,3 @@
 #!/bin/bash
 
-sudo dnf install policycoreutils-sandbox
+sudo dnf install policycoreutils-sandbox policycoreutils-python-utils fpc gcc gcc-c++
