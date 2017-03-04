@@ -105,7 +105,4 @@ class Node(object):
                     )
                     self.report_judging_error(submission)
 
-
-            # Sleep for a few seconds waiting for a next turn
-            logging.info("Waiting for next request.")
-            sleep(NODE['QUERY_TIME'])
+            logging.info("Performing the next request.")
