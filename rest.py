@@ -68,7 +68,7 @@ class RESTConnection(object):
         """Get a new submission for judging."""
 
         # Prepare the URL
-        url = 'submission/'
+        url = 'submission/for_judging/'
 
         response = cls.__get(url)
 
