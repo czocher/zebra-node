@@ -5,6 +5,18 @@ import os
 PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
 p = lambda *x: os.path.join(PROJECT_ROOT, *x)
 
+def get_java_filename(sourceCode):
+    class_name = search('public\s*class\s*([^\s]*)\s*{', sourceCode)
+    if class_name is not None:
+        return class_name.group(1) + '.java'
+    # We can return any name because the source code is not valid
+    # the javac will not be able to compile the class so the judge will give
+    # a score of 0 to the submission
+    # TODO: Consider raising an exception which will automatically give a score
+    # of 0 to the submission
+    return "bad.java"
+
+
 # List of languages supported by the Node
 LANGUAGES = {
     'C': {
@@ -35,8 +47,7 @@ LANGUAGES = {
         'compiler': 'javac',
         'compilerOptions': "",
         'runCommand': 'java  -Xmx2000k {fileName}',
-        'sourceFilename': lambda sourceCode: search(
-            'public\s*class\s*([^\s]*)\s*{', sourceCode).group(1) + '.java'
+        'sourceFilename': get_java_filename
     }
 }
 
