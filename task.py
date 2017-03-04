@@ -162,7 +162,7 @@ class RESTTask(Task):
         with tarfile.open(conf_path, mode='r:gz') as conf:
             for tarinfo in conf:
                 data = conf.extractfile(tarinfo).read()
-                data = json.loads(data)
+                data = json.loads(data.decode('utf-8'))
                 memory = int(data['memory'])
                 time = int(data['time'])
                 sample = bool(int(data['sample']))
@@ -177,5 +177,5 @@ class RESTTask(Task):
 
         with tarfile.open(out_path, mode='r:gz') as out:
             for tarinfo in out:
-                data = out.extractfile(tarinfo).read()
+                data = out.extractfile(tarinfo).read().decode('utf-8')
                 self._tests[tarinfo.name].output = data

@@ -2,6 +2,7 @@
 from settings import NODE, LANGUAGES
 from subprocess import PIPE
 from subprocess import Popen
+from six import itervalues
 import os
 import codecs
 import logging
@@ -84,7 +85,7 @@ class SELinuxSandbox(Sandbox):
             sandboxTmp=NODE['SANDBOX']['TMP_DIR'])
 
     def test_sandbox(self):
-        for lang in LANGUAGES.itervalues():
+        for lang in itervalues(LANGUAGES):
             command = 'which ' + lang['compiler']
             c = self.execute(
                 command,
@@ -118,7 +119,7 @@ class SELinuxSandbox(Sandbox):
             command=command
         ), stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
 
-        output = process.communicate(input)
+        output = map(lambda s: s.decode('utf-8'), process.communicate(input))
 
         # Get the time from the logging
         time = 0

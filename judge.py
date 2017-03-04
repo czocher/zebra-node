@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 #-*- coding: utf8 -*-
 
+from six import itervalues
 from math import ceil
 from settings import LANGUAGES, NODE
 from sandbox import Sandbox
@@ -88,7 +89,7 @@ class Judge(threading.Thread):
             sandboxHome=NODE['SANDBOX']['HOME_DIR'],
         )
 
-        for test in self.task.tests.itervalues():
+        for test in itervalues(self.task.tests):
             if not test.isSampleTest and self.sampleTests:
                 continue
 
