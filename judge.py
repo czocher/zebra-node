@@ -75,7 +75,7 @@ class Judge(threading.Thread):
             timeLimit=NODE['SANDBOX']['COMPILER_TIMELIMIT']
         )
 
-        self._compilation_log = '{} {}'.format(*ret[0])
+        self._compilation_log = u'{} {}'.format(*ret[0])
         logging.info("Compilation finished.")
 
     def execute(self, sandbox):
