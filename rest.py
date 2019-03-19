@@ -199,6 +199,6 @@ class RESTConnection(object):
         if os.path.exists(path):
             os.remove(path)
 
-        with open(path, 'w') as output:
+        with open(path, 'wb') as output:
             for chunk in response.iter_content(1024):
                 output.write(chunk)

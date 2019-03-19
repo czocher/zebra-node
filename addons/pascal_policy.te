@@ -8,4 +8,4 @@ require {
 }
 
 #============= sandbox_t ==============
-dontaudit sandbox_t lib_t:file execute_no_trans;
+allow sandbox_t lib_t:file execute_no_trans;

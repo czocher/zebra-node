@@ -85,13 +85,14 @@ class SELinuxSandbox(Sandbox):
             sandboxTmp=NODE['SANDBOX']['TMP_DIR'])
 
     def test_sandbox(self):
+        logging.info('Performing sandbox test...')
         for lang in itervalues(LANGUAGES):
             command = 'which ' + lang['compiler']
             c = self.execute(
                 command,
                 input="",
                 memoryLimit=2000000,
-                timeLimit=1
+                timeLimit=5
             )
             if c[1] != 0:
                 raise UnsupportedSandboxException(c)
@@ -110,14 +111,16 @@ class SELinuxSandbox(Sandbox):
             ulimitCmd = ''
 
         timeCmd = '/usr/bin/time -o time.log -f %U'
-
-        # Run the process
-        process = Popen('{ulimit}{sandbox} {time} {command}'.format(
+        cmd = '{ulimit}{sandbox} {time} {command}'.format(
             ulimit=ulimitCmd,
             sandbox=self.sandboxCmd,
             time=timeCmd,
             command=command
-        ), stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
+        )
+        logging.info('Performing {}'.format(cmd))
+
+        # Run the process
+        process = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
 
         output = map(lambda s: s.decode('utf-8'), process.communicate(input))
 
@@ -125,6 +128,11 @@ class SELinuxSandbox(Sandbox):
         time = 0
         with open(os.path.join(NODE['SANDBOX']['HOME_DIR'], 'time.log'),
                   'r') as timeLogFile:
-            time = float(timeLogFile.read().strip())
+            lines = timeLogFile.read().split('\n')
+            # File can contain 'Command exited with non-zero exit code'...
+            if len(lines) > 2:
+                time = float(lines[1])
+            else:
+                time = float(lines[0])
 
         return (output, process.returncode, time)

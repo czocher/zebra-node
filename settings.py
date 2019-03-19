@@ -78,7 +78,7 @@ NODE = {
         'HOME_DIR': './sandbox_home',
         'TMP_DIR': './sandbox_tmp',
         # Limit for compilation time in seconds
-        'COMPILER_TIMELIMIT': 5,
+        'COMPILER_TIMELIMIT': 20,
     }
 }
 

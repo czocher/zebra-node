@@ -159,7 +159,7 @@ class RESTTask(Task):
     def __fill_tests(self, conf_path, out_path, inpt_path):
         """Fill the tests dict with the Test objects from tar files."""
 
-        with tarfile.open(conf_path, mode='r:gz') as conf:
+        with tarfile.open(conf_path, mode='r') as conf:
             for tarinfo in conf:
                 data = conf.extractfile(tarinfo).read()
                 data = json.loads(data.decode('utf-8'))
@@ -170,12 +170,12 @@ class RESTTask(Task):
                             isSampleTest=sample)
                 self._tests.update({tarinfo.name: test})
 
-        with tarfile.open(inpt_path, mode='r:gz') as inpt:
+        with tarfile.open(inpt_path, mode='r') as inpt:
             for tarinfo in inpt:
                 data = inpt.extractfile(tarinfo).read()
                 self._tests[tarinfo.name].input = data
 
-        with tarfile.open(out_path, mode='r:gz') as out:
+        with tarfile.open(out_path, mode='r') as out:
             for tarinfo in out:
                 data = out.extractfile(tarinfo).read().decode('utf-8')
                 self._tests[tarinfo.name].output = data
